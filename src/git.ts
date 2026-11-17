@@ -37,7 +37,9 @@ function assertBaseRef(repositoryPath: string, ref: string): void {
 export function changedFiles(repositoryPath: string, baseRef?: string): ChangedFile[] {
   const base = baseRef ?? "main";
   assertBaseRef(repositoryPath, base);
-  const output = git(repositoryPath, ["diff", "--name-status", `${base}...HEAD`]);
+  // Defense in depth on top of assertBaseRef: everything after --end-of-options
+  // is treated as a revision, never as an option (requires Git >= 2.24).
+  const output = git(repositoryPath, ["diff", "--name-status", "--end-of-options", `${base}...HEAD`]);
 
   return output
     .split("\n")
