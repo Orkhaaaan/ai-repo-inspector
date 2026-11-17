@@ -8,6 +8,17 @@ function git(repositoryPath: string, args: string[]): string {
   }).trim();
 }
 
+export function assertGitWorkTree(repositoryPath: string): void {
+  try {
+    execFileSync("git", ["rev-parse", "--is-inside-work-tree"], {
+      cwd: repositoryPath,
+      stdio: "pipe",
+    });
+  } catch {
+    throw new Error(`Not a Git repository: ${repositoryPath}`);
+  }
+}
+
 export function changedFiles(repositoryPath: string, baseRef?: string): ChangedFile[] {
   const base = baseRef ?? "main";
   const output = git(repositoryPath, ["diff", "--name-status", `${base}...HEAD`]);

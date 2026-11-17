@@ -15,7 +15,8 @@ function parseArgs(argv: string[]): Args {
   for (let index = 1; index < argv.length; index++) {
     const token = argv[index];
     if (token === "--repo") {
-      args.repositoryPath = argv[++index]?.split(" ")[0];
+      // Keep the whole argument: paths such as "C:\My Projects\app" contain spaces.
+      args.repositoryPath = argv[++index];
     } else if (token === "--base-ref") {
       args.baseRef = argv[++index];
     } else if (token === "--format") {
