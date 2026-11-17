@@ -149,6 +149,9 @@ I used Claude Code as a pair programmer.
 
 ## Commands used to verify the result, with outcomes
 
+Captured output of the main scenarios (CLI pass/fail and exit codes, JSON,
+MCP allowed and refused calls, injection attempt): [docs/DEMO.md](docs/DEMO.md).
+
 - `npm run typecheck`: no errors.
 - `npm test`: 46/46 passed on Windows. The same suite passed on GitHub Actions
   `ubuntu-latest` for both the branch and `main`.
