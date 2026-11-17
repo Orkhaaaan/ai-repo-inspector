@@ -129,23 +129,29 @@ I used Claude Code as a pair programmer.
 
 ## Where did you check, correct, or reject an AI suggestion? (required)
 
-- **Rejected "Windows is enough".** The timeout and process-tree kill tests
-  had only been verified on Windows. Before merging, I required the pushed
-  branch to run on GitHub Actions (`ubuntu-latest`), which exercises the
-  Linux process-group path. It passed, and only then did I fast-forward
-  `main`.
-- **Checked a claimed vulnerability before accepting it.** The AI listed
-  `baseRef` option injection as a bug. I had it reproduced in a real repo
-  first: `--output=pwned.txt...HEAD` created a file. Only then was it fixed.
-- **Corrected a misleading test result.** After the build fix, `npm test`
-  reported 7 failing files. Instead of accepting a "fix", I had it
-  investigated. They were stale `dist/test/*.js` files from the old build
-  config, which the new config never produces. A clean run passed.
-- **Rejected a broad commit.** I did not let it commit the `package-lock.json`
-  churn from `npm install`, or run `npm audit fix --force`.
-- **Kept scope honest.** When the uncommitted-changes work turned out to
-  conflict with an existing test expectation, I had it stop instead of editing
-  the existing test to make it pass.
+The AI's bug list said that base_ref could be used for option injection. I
+didn't want to just believe it, so it was reproduced first: git diff with
+"--output=pwned.txt...HEAD" as the ref really created a file. So an AI agent
+using the MCP tool could write files to disk. Only after seeing that did I fix
+it and add tests for it.
+
+The AI's first fix for base_ref was input validation only. I didn't think one
+check was enough, so I asked for defence in depth: git now also receives
+--end-of-options before the ref. A separate test checks the real git
+arguments, so the protection still holds if the validation is ever bypassed.
+
+The AI had verified the timeout and process-tree kill only on Windows. I
+didn't let it merge on that basis. I asked for the branch to be pushed and for
+the GitHub Actions run on ubuntu-latest to be checked first. Only after it
+passed was main fast-forwarded.
+
+I also didn't trust "all tests pass" by itself. Every fix was written
+test-first, and I asked to see each new test fail on the old code. For the
+security fixes, the protection was temporarily removed to confirm that its
+tests fail without it, and then restored.
+
+When the CI logs needed a GitHub login, the agent did not log in with my
+account. The result was checked another way (see the blocker section).
 
 ## Commands used to verify the result, with outcomes
 
@@ -166,12 +172,17 @@ MCP allowed and refused calls, injection attempt): [docs/DEMO.md](docs/DEMO.md).
 
 ## A blocker you hit and how you approached it
 
-I could not read the GitHub Actions logs. `gh` was not installed, the logs API
-needs a token, and the web UI asks for a sign-in. To confirm that the Linux run
-really executed the timeout tests, I used the public run and job API: every
-step succeeded. I also made sure no test is skipped or `.only`, and vitest
-exits non-zero on any failure, so a green `npm test` step means every test ran
-and passed.
+The timeout had to work on Windows and Linux. I work on Windows, where killing
+only cmd.exe would leave child processes such as `npm test` running. So the
+code uses taskkill /T to kill the whole process tree, and a check after the
+timeout test found no orphaned processes. On Linux the code kills the process
+group instead, but I couldn't test that on my machine.
+
+So I pushed early and used the GitHub Actions run (ubuntu-latest) as the real
+test for Linux. It passed with all 46 tests, including the timeout ones. I
+couldn't open the full log without logging in. Instead I checked the public
+job steps and annotations, and relied on two facts: no test is skipped, and
+vitest exits with an error code if any test fails.
 
 ## Known limitations and the next three things you would do
 
@@ -227,5 +238,5 @@ Next three:
 
 ## Approximate focused-work time
 
-- Start: 18:55 (repository created from the template)
-- Finish: 20:15
+- Start: 2026-11-17 ~18:55 (Asia/Baku)
+- Finish: 2026-11-17 ~20:10 (Asia/Baku)
