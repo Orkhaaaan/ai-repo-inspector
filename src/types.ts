@@ -15,6 +15,12 @@ export type ValidationResult = {
   truncatedChars: number;
 };
 
+export type ReviewResult = {
+  repositoryPath: string;
+  changedFiles: ChangedFile[];
+  validationResults: ValidationResult[];
+};
+
 export type ReviewRequest = {
   repositoryPath: string;
   baseRef?: string;

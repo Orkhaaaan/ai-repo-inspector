@@ -2,7 +2,7 @@ import { existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { assertGitWorkTree, changedFiles } from "./git.js";
 import { markdownReport } from "./report.js";
-import type { ReviewRequest } from "./types.js";
+import type { ReviewRequest, ReviewResult } from "./types.js";
 import { runValidations } from "./validation.js";
 
 /**
@@ -25,16 +25,26 @@ export function resolveRepositoryPath(repositoryPath: string | undefined): strin
   return absolutePath;
 }
 
-export async function reviewRepository(request: ReviewRequest): Promise<string> {
+/** Structured review result shared by every interface; renderers sit on top. */
+export async function runReview(request: ReviewRequest): Promise<ReviewResult> {
   const repositoryPath = resolveRepositoryPath(request.repositoryPath);
   const files = changedFiles(repositoryPath, request.baseRef);
   const validations = await runValidations(
     request.validationCommands ?? [],
     repositoryPath,
   );
-  return markdownReport({
+  return {
     repositoryPath,
     changedFiles: files,
     validationResults: validations,
-  });
+  };
+}
+
+/** True when any validation did not pass (failed or timed out). */
+export function hasFailedValidation(result: ReviewResult): boolean {
+  return result.validationResults.some((validation) => validation.status !== "passed");
+}
+
+export async function reviewRepository(request: ReviewRequest): Promise<string> {
+  return markdownReport(await runReview(request));
 }
