@@ -83,9 +83,15 @@ no report, and exits with code 1.
 
 ### What the report contains
 
-- **Changed files**: the output of `git diff --name-status <base-ref>...HEAD`,
-  i.e. files changed on the current branch since its merge base with
-  `<base-ref>`. Each file is listed as `added`, `deleted`, or `modified`.
+- **Changed files**: committed, staged, unstaged and untracked changes since
+  the merge base of `<base-ref>` and `HEAD`
+  (`git diff --name-status -z -M <merge-base>` plus
+  `git ls-files --others --exclude-standard -z`). Statuses: `added`,
+  `modified`, `deleted`, `renamed` and `copied` (with `oldPath`, shown as
+  `old -> new`), `type_changed`, `unmerged`, `untracked`, and `unknown` (with
+  the raw Git `code`). Paths are taken verbatim; paths containing control
+  characters are shown quoted in Markdown. `--base-ref HEAD` shows only
+  uncommitted work.
 - **Validation results**: for each command, its status (`passed`, `failed`, or
   `timed_out`), exit code, duration, and combined stdout and stderr.
 
@@ -228,11 +234,6 @@ options and flags without values are now errors.
 
 ## Known limitations
 
-- Only committed changes on the current branch are listed. Uncommitted and
-  untracked files do not appear.
-- Only `A` (added) and `D` (deleted) Git statuses are mapped. Every other
-  status, including renames and copies, is reported as `modified`. For
-  renames, the path shows the old and new names separated by a tab.
 - The changed-file list has no size limit. Validation output is capped per
   command, not in total.
 - Exit code `1` does not distinguish failed validations from usage or runtime

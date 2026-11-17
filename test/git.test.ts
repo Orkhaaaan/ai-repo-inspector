@@ -10,19 +10,19 @@ vi.mock("node:child_process", async (importOriginal) => {
 });
 
 describe("changedFiles git invocation", () => {
-  it("passes --end-of-options right before the ref range (defense in depth)", () => {
+  it("passes --end-of-options right before every ref it gives git (defense in depth)", () => {
     const repo = createFixtureRepo();
     vi.mocked(execFileSync).mockClear();
 
     expect(changedFiles(repo, "main")).toEqual([{ path: "src/feature.ts", status: "added" }]);
 
-    const diffArgs = vi
-      .mocked(execFileSync)
-      .mock.calls.map((call) => call[1] as string[])
-      .find((args) => args[0] === "diff");
-    expect(diffArgs).toBeDefined();
-    const rangeIndex = diffArgs!.indexOf("main...HEAD");
-    expect(rangeIndex).toBeGreaterThan(0);
-    expect(diffArgs![rangeIndex - 1]).toBe("--end-of-options");
+    const calls = vi.mocked(execFileSync).mock.calls.map((call) => call[1] as string[]);
+    // The user-supplied base ref goes to merge-base...
+    const mergeBaseArgs = calls.find((args) => args[0] === "merge-base");
+    expect(mergeBaseArgs?.slice(-3)).toEqual(["--end-of-options", "main", "HEAD"]);
+    // ...and diff only ever receives the resolved merge-base commit id.
+    const diffArgs = calls.find((args) => args[0] === "diff");
+    expect(diffArgs?.at(-2)).toBe("--end-of-options");
+    expect(diffArgs?.at(-1)).toMatch(/^[0-9a-f]{40,64}$/);
   });
 });

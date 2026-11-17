@@ -9,7 +9,10 @@ type ReportInput = {
 export function markdownReport(input: ReportInput): string {
   const lines = [`# Review Report: ${input.repositoryPath}`, "", "## Changed files"];
   for (const file of input.changedFiles) {
-    lines.push(`- ${file.path} (${file.status})`);
+    const name =
+      file.oldPath === undefined ? displayPath(file.path) : `${displayPath(file.oldPath)} -> ${displayPath(file.path)}`;
+    const status = file.status === "unknown" ? `unknown: ${file.code ?? "?"}` : file.status;
+    lines.push(`- ${name} (${status})`);
   }
   lines.push("", "## Validation output");
   if (input.validationResults.length === 0) {
@@ -26,6 +29,11 @@ export function markdownReport(input: ReportInput): string {
     lines.push("", fence, result.output, fence);
   }
   return lines.join("\n");
+}
+
+/** Quotes paths with control characters (tab, newline, ...) so each file stays on one line. */
+function displayPath(path: string): string {
+  return /[\u0000-\u001f\u007f]/.test(path) ? JSON.stringify(path) : path;
 }
 
 /** A fence longer than any backtick run in the text, so output cannot close it early. */

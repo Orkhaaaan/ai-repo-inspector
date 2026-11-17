@@ -1,6 +1,19 @@
 export type ChangedFile = {
   path: string;
-  status: "added" | "modified" | "deleted" | "untracked";
+  /** Previous path; only for "renamed" and "copied". */
+  oldPath?: string;
+  /** Raw Git status code; only for "unknown". */
+  code?: string;
+  status:
+    | "added"
+    | "modified"
+    | "deleted"
+    | "renamed"
+    | "copied"
+    | "type_changed"
+    | "unmerged"
+    | "untracked"
+    | "unknown";
 };
 
 export type ValidationResult = {
