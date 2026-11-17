@@ -112,6 +112,29 @@ describe("changedFiles: committed, staged, unstaged and untracked work", () => {
   });
 });
 
+describe("changedFiles: review findings", () => {
+  it("reports a file with an unresolved merge conflict as unmerged", () => {
+    const repo = createFixtureRepo();
+    git(repo, "switch", "-q", "main");
+    writeFile(repo, "README.md", "main version\n");
+    commitAll(repo, "main edits README");
+    git(repo, "switch", "-q", "feature");
+    writeFile(repo, "README.md", "feature version\n");
+    commitAll(repo, "feature edits README");
+    expect(() => git(repo, "merge", "-q", "main")).toThrow(); // conflict
+
+    const readme = changedFiles(repo, "main").filter((file) => file.path === "README.md");
+    expect(readme).toEqual([{ path: "README.md", status: "unmerged" }]);
+  });
+
+  it("lists a file removed from the index with git rm --cached once, as untracked", () => {
+    const repo = createFixtureRepo();
+    git(repo, "rm", "-q", "--cached", "README.md");
+
+    expect(byPath(changedFiles(repo, "main"))).toEqual([{ path: "README.md", status: "untracked" }, FEATURE]);
+  });
+});
+
 describe("changedFiles: what the changes are compared against", () => {
   it("uses the merge base, so commits that exist only on the base branch are not reported", () => {
     const repo = createFixtureRepo();

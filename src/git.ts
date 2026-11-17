@@ -5,6 +5,8 @@ function git(repositoryPath: string, args: string[]): string {
   return execFileSync("git", args, {
     cwd: repositoryPath,
     encoding: "utf8",
+    // Capture stderr so git's "fatal: ..." does not leak to the console; callers throw clear errors.
+    stdio: ["ignore", "pipe", "pipe"],
   }).trim();
 }
 
@@ -124,5 +126,16 @@ export function changedFiles(repositoryPath: string, baseRef?: string): ChangedF
     .filter(Boolean)
     .map((path): ChangedFile => ({ path, status: "untracked" }));
 
-  return [...tracked, ...untracked];
+  // A diff against a commit shows conflicted paths as "M"; ask the index directly.
+  const conflicted = new Set(
+    gitRaw(top, ["diff", "--name-only", "-z", "--diff-filter=U"]).split("\0").filter(Boolean),
+  );
+  // After `git rm --cached`, the same path is "deleted" from the index and "untracked" on disk: keep one entry.
+  const untrackedPaths = new Set(untracked.map((file) => file.path));
+
+  const trackedEntries = tracked
+    .filter((file) => !(file.status === "deleted" && untrackedPaths.has(file.path)))
+    .map((file): ChangedFile => (conflicted.has(file.path) ? { path: file.path, status: "unmerged" } : file));
+
+  return [...trackedEntries, ...untracked];
 }
