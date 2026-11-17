@@ -175,13 +175,44 @@ and passed.
 
 ## Known limitations and the next three things you would do
 
-Known limitations:
+Known limitations, in priority order:
 
-- Only committed changes on the branch are listed (see above).
-- Renames and copies are shown as `modified`.
-- Exit code 1 means a failed validation, a usage error, or a runtime error.
-- CLI runtime errors print a stack trace.
-- Approved validation commands are not sandboxed.
+1. **Uncommitted and untracked changes are not listed.** An agent usually
+   wants to check its work before committing, so this is the biggest
+   functional gap.
+2. **Renames and copies are shown as `modified`.** The path appears as
+   `old<TAB>new`, and non-ASCII names come out in Git's quoted form because
+   `-z` is not used.
+3. **No overall output budget.** Each validation is capped at 20,000
+   characters, but the number of changed files and validations is not. Over
+   MCP this can fill the agent's context. It needs a file-count limit, a
+   summary, and an "N more truncated" note.
+4. **Exit code 1 has three meanings:** a failed validation, a usage error, or
+   a runtime error. CI cannot tell them apart. Runtime errors also print a
+   stack trace.
+5. **The validation environment is not hardened.**
+   - Commands inherit every environment variable of the server process,
+     including tokens and secrets.
+   - Their output reaches the report and the agent without redaction.
+   - The 5-minute timeout is fixed. Some MCP clients time out sooner, and
+     there is no progress reporting or cancellation.
+   - The README says a sandbox is needed, but the tool does not provide one.
+6. **MCP returns only Markdown.** There is no `structuredContent` or
+   `outputSchema`, and a structured result would be more reliable for agents.
+   The CLI has no allowlist by design: the trust model differs, as explained
+   under "Interface decision".
+7. **Smaller issues:**
+   - The default base `main` fails on `master` or `develop` repos; it could be
+     detected from `origin/HEAD`.
+   - In a shallow CI clone, `git merge-base` may not find a common ancestor.
+   - The report always overwrites a file in the current directory; there is
+     no `--output` option.
+   - The JSON includes the absolute `repositoryPath` and has no schema
+     version.
+   - The breaking changes are not reflected in a version bump or a CHANGELOG.
+8. **README** still contains the assessment's task, rules and time sections
+   from the template. I kept them deliberately so that reviewers see the brief
+   next to the docs. In a real project they would be removed.
 
 Next three:
 
