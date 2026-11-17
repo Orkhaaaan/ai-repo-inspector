@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
@@ -24,7 +25,13 @@ describe("MCP review_repository", () => {
     await client.connect(
       new StdioClientTransport({
         command: process.execPath,
-        args: [tsxCli, join(projectRoot, "src", "mcp-server.ts")],
+        // The operator approves exactly one named validation.
+        args: [
+          tsxCli,
+          join(projectRoot, "src", "mcp-server.ts"),
+          "--allow-validation",
+          `smoke=node -e "console.log('approved command ran')"`,
+        ],
         cwd: projectRoot,
         stderr: "pipe",
       }),
@@ -63,5 +70,59 @@ describe("MCP review_repository", () => {
 
     expect(result.isError).toBe(true);
     expect(textOf(result)).toMatch(/absolute path/i);
+  });
+
+  it("advertises the approved validation names in the tool schema", async () => {
+    const { tools } = await client.listTools();
+    const schema = tools.find((tool) => tool.name === "review_repository")?.inputSchema as {
+      properties: Record<string, { items?: { enum?: string[] } }>;
+      additionalProperties?: boolean;
+    };
+    expect(schema.properties.validations.items?.enum).toEqual(["smoke"]);
+    expect(schema.additionalProperties).toBe(false);
+  });
+
+  it("runs an approved validation by name", async () => {
+    const result = (await client.callTool({
+      name: "review_repository",
+      arguments: { repo_path: fixture, validations: ["smoke"] },
+    })) as ToolResult;
+
+    expect(result.isError).toBeFalsy();
+    expect(textOf(result)).toContain("approved command ran");
+    expect(textOf(result)).toContain("Status: **passed**");
+  });
+
+  it("refuses a validation name that the operator did not approve", async () => {
+    const result = (await client.callTool({
+      name: "review_repository",
+      arguments: { repo_path: fixture, validations: ["deploy"] },
+    })) as ToolResult;
+
+    expect(result.isError).toBe(true);
+  });
+
+  it("refuses raw shell commands sent in the old validationCommands field", async () => {
+    const marker = join(fixture, "should-not-exist.txt");
+    const result = (await client.callTool({
+      name: "review_repository",
+      arguments: {
+        repo_path: fixture,
+        validationCommands: [`node -e "require('fs').writeFileSync('${marker.replace(/\\/g, "/")}', 'x')"`],
+      },
+    })) as ToolResult;
+
+    expect(result.isError).toBe(true);
+    expect(existsSync(marker)).toBe(false);
+  });
+
+  it("refuses a base_ref that Git would read as an option", async () => {
+    const result = (await client.callTool({
+      name: "review_repository",
+      arguments: { repo_path: fixture, base_ref: "--output=pwned.txt" },
+    })) as ToolResult;
+
+    expect(result.isError).toBe(true);
+    expect(existsSync(join(fixture, "pwned.txt...HEAD"))).toBe(false);
   });
 });

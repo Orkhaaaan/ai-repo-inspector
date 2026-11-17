@@ -19,8 +19,24 @@ export function assertGitWorkTree(repositoryPath: string): void {
   }
 }
 
+/**
+ * Rejects refs Git could read as options (`--output=file` makes `git diff`
+ * write a file) and refs that do not resolve to a commit.
+ */
+function assertBaseRef(repositoryPath: string, ref: string): void {
+  if (ref === "" || ref.startsWith("-") || /[\s\0]/.test(ref)) {
+    throw new Error(`Invalid base ref: ${JSON.stringify(ref)}`);
+  }
+  try {
+    git(repositoryPath, ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`]);
+  } catch {
+    throw new Error(`Base ref "${ref}" was not found in ${repositoryPath}. Pass an existing branch or commit.`);
+  }
+}
+
 export function changedFiles(repositoryPath: string, baseRef?: string): ChangedFile[] {
   const base = baseRef ?? "main";
+  assertBaseRef(repositoryPath, base);
   const output = git(repositoryPath, ["diff", "--name-status", `${base}...HEAD`]);
 
   return output
