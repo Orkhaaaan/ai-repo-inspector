@@ -76,7 +76,25 @@ the old code.
   spaces, non-ASCII paths with `-z`), and they fail on the current code. The
   design changes the `git diff` invocation, which conflicts with an existing
   test that asserts the old `main...HEAD` argument. I ran out of time to settle
-  that properly, so it is not committed.
+  that properly, so it is not on `main`.
+
+  **Update, at the end of the time box:** it is now implemented on the branch
+  [`feature/uncommitted-changes`](https://github.com/Orkhaaaan/ai-repo-inspector/tree/feature/uncommitted-changes).
+  That branch adds:
+  - committed, staged, unstaged and untracked changes, compared against the
+    merge base;
+  - `-z` parsing, with `renamed`/`copied` entries that carry `oldPath`;
+  - explicit `unknown` codes;
+  - merge conflicts reported as `unmerged`.
+
+  The existing `--end-of-options` test now checks the `merge-base` and `diff`
+  calls instead of the removed literal. An independent AI review of that
+  commit found three real defects (conflicts shown as `modified`, a duplicate
+  entry after `git rm --cached`, and leaked git stderr). Each was reproduced
+  with a failing test first and then fixed. 68 tests pass locally. I
+  deliberately left it unmerged, so `main` stays as it was at the time box,
+  and the Linux CI result for the branch was not yet confirmed when I
+  submitted.
 - I left `npm audit` warnings in dependencies alone. `npm audit fix --force`
   would bump major versions and could break the project.
 
